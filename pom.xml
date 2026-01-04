@@ -58,6 +58,12 @@
         <module>spring-boot-starters/spring-ai-alibaba-starter-config-nacos</module>
         <module>spring-boot-starters/spring-ai-alibaba-starter-graph-observation</module>
         <module>spring-boot-starters/spring-ai-alibaba-starter-builtin-nodes</module>
+
+        <!-- Examples -->
+        <module>examples/chatbot</module>
+        <module>examples/shelluse</module>
+        <module>examples/deepresearch</module>
+        <module>examples/documentation</module>
     </modules>
 
     <scm>

@@ -587,7 +587,8 @@ public class QuickStartExample {
 		// 图将在 human_review 处暂停（因为配置了 interruptBefore）
 		Flux<NodeOutput> stream = app.stream(initialState, config);
 		stream
-				.doOnNext(output -> log.info("节点输出: {}", output))
+				.doOnNext(output ->
+						log.info("节点输出: {}", output))
 				.doOnError(error -> log.error("执行错误: {}", error.getMessage()))
 				.doOnComplete(() -> log.info("流完成"))
 				.blockLast();
