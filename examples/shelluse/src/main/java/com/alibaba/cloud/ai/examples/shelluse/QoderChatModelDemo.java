@@ -17,11 +17,9 @@
 package com.alibaba.cloud.ai.examples.shelluse;
 
 import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -35,7 +33,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @author zsk
  */
-public class QoderChatModelExample {
+public class QoderChatModelDemo {
 
 	public static void main(String[] args) {
 		// 1. 创建线程池
@@ -71,34 +69,27 @@ public class QoderChatModelExample {
 				.timeoutSeconds(300) // 5分钟超时
 				.build();
 
-			// 4. 使用示例 1: 简单问答
-			System.out.println("=== 示例 1: 简单问答 ===");
-			ChatResponse response1 = chatModel.call(
-				new Prompt(new UserMessage("如何在Java中创建线程池?"))
+			// 7. 使用示例 4: 流式响应
+			System.out.println("=== 示例 4: 流式响应 ===");
+			System.out.println("响应（实时流式）:");
+			chatModel.stream(
+				new Prompt(new UserMessage("用Java写一个计算斐波那契数列的程序"))
+			).subscribe(
+				response -> {
+					// 实时打印每个chunk
+					String chunk = response.getResult().getOutput().getText();
+					System.out.print(chunk);
+				},
+				error -> {
+					System.err.println("\n流式响应错误: " + error.getMessage());
+				},
+				() -> {
+					System.out.println("\n[流式响应完成]");
+				}
 			);
-			System.out.println("响应:");
-			System.out.println(response1.getResult().getOutput().getText());
-			System.out.println();
-
-			// 5. 使用示例 2: 代码生成
-			System.out.println("=== 示例 2: 代码生成 ===");
-			ChatResponse response2 = chatModel.call(
-				new Prompt(new UserMessage("用Java写一个快速排序算法"))
-			);
-			System.out.println("响应:");
-			System.out.println(response2.getResult().getOutput().getText());
-			System.out.println();
-
-			// 6. 使用示例 3: 多轮对话
-			System.out.println("=== 示例 3: 多轮对话 ===");
-			ChatResponse response3 = chatModel.call(
-				new Prompt(List.of(
-					new UserMessage("什么是Spring Boot?"),
-					new UserMessage("它有哪些核心特性?")
-				))
-			);
-			System.out.println("响应:");
-			System.out.println(response3.getResult().getOutput().getText());
+			
+			// 等待流式响应完成
+			Thread.sleep(10000);
 			System.out.println();
 
 		} catch (Exception e) {
@@ -129,28 +120,28 @@ public class QoderChatModelExample {
 		}
 	}
 
-	/**
-	 * 演示如何集成到 Spring 环境
-	 */
-	public static class SpringIntegrationExample {
-		
-		// 在 Spring 配置类中定义 Bean
-		// @Bean
-		public QoderChatModel qoderChatModel(StreamingShellExample shellExample) {
-			return QoderChatModel.builder()
-				.executorService(shellExample.getReaderThreadPool())
-				.activeProcesses(shellExample.getActiveProcesses())
-				.workspace(Paths.get(System.getProperty("user.dir")))
-				.timeoutSeconds(300)
-				.build();
-		}
-
-		// 使用示例
-		public void useQoderChatModel(QoderChatModel chatModel) {
-			ChatResponse response = chatModel.call(
-				new Prompt(new UserMessage("帮我分析这段代码的性能瓶颈"))
-			);
-			System.out.println(response.getResult().getOutput().getText());
-		}
-	}
+//	/**
+//	 * 演示如何集成到 Spring 环境
+//	 */
+//	public static class SpringIntegrationExample {
+//
+//		// 在 Spring 配置类中定义 Bean
+//		// @Bean
+//		public QoderChatModel qoderChatModel(StreamingShellExample shellExample) {
+//			return QoderChatModel.builder()
+//				.executorService(shellExample.getReaderThreadPool())
+//				.activeProcesses(shellExample.getActiveProcesses())
+//				.workspace(Paths.get(System.getProperty("user.dir")))
+//				.timeoutSeconds(300)
+//				.build();
+//		}
+//
+//		// 使用示例
+//		public void useQoderChatModel(QoderChatModel chatModel) {
+//			ChatResponse response = chatModel.call(
+//				new Prompt(new UserMessage("帮我分析这段代码的性能瓶颈"))
+//			);
+//			System.out.println(response.getResult().getOutput().getText());
+//		}
+//	}
 }

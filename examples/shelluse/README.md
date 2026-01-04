@@ -159,6 +159,96 @@ ShellTool 适用于以下场景：
 
 - [Spring AI Alibaba Agent Framework](../../spring-ai-alibaba-agent-framework)
 - [ShellTool 源码](../../spring-ai-alibaba-agent-framework/src/main/java/com/alibaba/cloud/ai/graph/agent/tools/ShellTool.java)
+- [QoderChatModel 文档](QODER_CHAT_MODEL.md)
+- [StreamingShellExample 流式输出指南](STREAMING_GUIDE.md)
+
+## QoderChatAgentDemo 使用说明
+
+### 功能特性
+
+`QoderChatAgentDemo` 是一个基于 ReactAgent + QoderChatModel 的命令行多轮对话系统：
+
+- **ReactAgent 集成**: 使用 Spring AI Alibaba 的 ReactAgent 框架
+- **QoderChatModel 底层**: 内置 qodercli 命令行工具
+- **多轮对话**: 支持上下文记忆的多轮对话
+- **命令行交互**: 简洁的命令行界面
+- **流式输出**: 可选的流式响应模式
+
+### 运行示例
+
+```bash
+# 基本版本（同步响应）
+java -cp target/shelluse-0.0.1-SNAPSHOT.jar \
+     com.alibaba.cloud.ai.examples.shelluse.QoderChatAgentDemo
+
+# 流式版本（实时输出）
+java -cp target/shelluse-0.0.1-SNAPSHOT.jar \
+     com.alibaba.cloud.ai.examples.shelluse.QoderChatAgentDemo streamingDemo
+```
+
+### 使用示例
+
+```
+=== Qoder Chat Agent Demo ===
+基于 ReactAgent + QoderChatModel 的多轮对话系统
+输入 'exit' 或 'quit' 退出程序
+
+✓ QoderChatModel 初始化成功
+✓ ReactAgent 初始化成功
+
+开始对话...
+
+You: 如何在Java中创建线程池？
+
+[对话轮次: 1]
+Agent: 在Java中创建线程池可以使用 ExecutorService...
+
+You: 请给个代码示例
+
+[对话轮次: 2]
+Agent: 以下是一个示例...
+
+You: exit
+
+再见！
+```
+
+### 代码示例
+
+```java
+// 创建 QoderChatModel
+QoderChatModel chatModel = QoderChatModel.builder()
+    .executorService(executorService)
+    .activeProcesses(activeProcesses)
+    .workspace(Paths.get(System.getProperty("user.dir")))
+    .timeoutSeconds(300)
+    .build();
+
+// 构建 ReactAgent
+ReactAgent agent = ReactAgent.builder()
+    .name("qoder_chat_agent")
+    .model(chatModel)
+    .description("基于 qodercli 的智能对话助手")
+    .instruction("你是一个强大的 AI 编程助手...")
+    .saver(new MemorySaver()) // 支持多轮对话
+    .enableLogging(false)
+    .build();
+
+// 多轮对话
+RunnableConfig config = RunnableConfig.builder()
+    .threadId("session-id")
+    .build();
+
+AssistantMessage response = agent.call(userInput, config);
+System.out.println(response.getText());
+```
+
+### 核心特性
+
+1. **上下文记忆**: 使用 `MemorySaver` 保存对话历史
+2. **会话管理**: 通过 `threadId` 管理不同会话
+3. **资源管理**: 自动清理线程池和进程
+4. **错误处理**: 完善的异常捕获和提示
 
 ## 许可证
 

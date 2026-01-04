@@ -72,6 +72,8 @@ graph TB
 
 ## 📊 执行流程
 
+### 同步调用流程
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -107,9 +109,49 @@ sequenceDiagram
     QoderChatModel-->>User: return ChatResponse
 ```
 
+### 流式调用流程
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant QoderChatModel
+    participant Flux
+    participant ProcessTask
+    participant Process
+    participant QoderCLI
+
+    User->>QoderChatModel: stream(Prompt)
+    QoderChatModel->>Flux: Flux.create()
+    QoderChatModel-->>User: return Flux
+    
+    Note over QoderChatModel,ProcessTask: 异步执行
+    
+    QoderChatModel->>ProcessTask: new ProcessTask(command)
+    ProcessTask->>Process: start()
+    Process->>QoderCLI: execute
+    
+    loop 实时输出
+        QoderCLI-->>Process: output line
+        Process-->>ProcessTask: readLine()
+        ProcessTask->>Flux: sink.next(chunk)
+        Flux-->>User: 实时接收 chunk
+    end
+    
+    QoderCLI-->>Process: exit
+    Process-->>ProcessTask: complete
+    ProcessTask->>Flux: sink.complete()
+    Flux-->>User: 完成信号
+    
+    alt 用户取消
+        User->>Flux: cancel()
+        Flux->>ProcessTask: future.cancel()
+        ProcessTask->>Process: destroyForcibly()
+    end
+```
+
 ## 💡 使用示例
 
-### 基本使用
+### 同步调用
 
 ```java
 // 1. 创建 QoderChatModel
@@ -128,6 +170,27 @@ ChatResponse response = chatModel.call(
 // 3. 获取结果
 String answer = response.getResult().getOutput().getText();
 System.out.println(answer);
+```
+
+### 流式调用
+
+```java
+// 流式响应 - 实时获取输出
+chatModel.stream(
+    new Prompt(new UserMessage("用Java写一个快速排序算法"))
+).subscribe(
+    response -> {
+        // 实时打印每个chunk
+        String chunk = response.getResult().getOutput().getText();
+        System.out.print(chunk);
+    },
+    error -> {
+        System.err.println("错误: " + error.getMessage());
+    },
+    () -> {
+        System.out.println("\n[完成]");
+    }
+);
 ```
 
 ### Spring 集成
@@ -159,6 +222,22 @@ qodercli -p "<用户问题>" --max-turns 25
 **参数说明**:
 - `-p`: 指定用户问题
 - `--max-turns 25`: 最大交互轮数为 25
+
+## ⚡ 关键特性
+
+### 1. 同步调用 (call)
+- 阻塞等待命令执行完成
+- 返回完整的响应内容
+- 适用于需要完整结果的场景
+
+### 2. 流式调用 (stream)
+- **实时输出**: 每行命令输出立即发送
+- **非阻塞**: 不阻塞调用线程
+- **可取消**: 支持中途取消
+- **适用场景**: 
+  - 长时间运行的命令
+  - 需要实时反馈的场景
+  - UI 界面实时显示
 
 ## ⚙️ 配置参数
 
@@ -198,16 +277,18 @@ examples/shelluse/src/main/java/com/alibaba/cloud/ai/examples/shelluse/
 ## 🚀 优势特性
 
 1. **标准接口**: 符合 Spring AI ChatModel 接口规范
-2. **进程隔离**: 每次调用独立进程,互不影响
-3. **异步执行**: 基于线程池异步执行,不阻塞调用方
-4. **超时控制**: 可配置超时时间,防止无限等待
-5. **资源管理**: 自动追踪和清理进程资源
-6. **流式输出**: 实时收集命令输出
-7. **Builder 模式**: 灵活的配置方式
+2. **双模式支持**: 同时支持同步和流式调用
+3. **进程隔离**: 每次调用独立进程,互不影响
+4. **异步执行**: 基于线程池异步执行,不阻塞调用方
+5. **超时控制**: 可配置超时时间,防止无限等待
+6. **资源管理**: 自动追踪和清理进程资源
+7. **流式输出**: 实时收集命令输出
+8. **Builder 模式**: 灵活的配置方式
+9. **可取消**: 流式调用支持中途取消
 
 ## 🔄 扩展可能
 
-1. **流式响应**: 实现 `stream(Prompt)` 方法支持流式返回
+1. **✅ 流式响应**: 已实现 `stream(Prompt)` 方法支持流式返回
 2. **上下文管理**: 支持多轮对话上下文
 3. **自定义命令**: 支持动态配置命令模板
 4. **输出解析**: 支持结构化输出解析

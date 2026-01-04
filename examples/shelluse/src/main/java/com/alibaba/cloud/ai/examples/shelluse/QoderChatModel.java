@@ -134,6 +134,63 @@ public class QoderChatModel implements ChatModel {
 		}
 	}
 
+	@Override
+	public Flux<ChatResponse> stream(Prompt prompt) {
+		return Flux.create(sink -> {
+			// 提取用户问题
+			String userQuery = extractUserQuery(prompt);
+			
+			// 构建 qodercli 命令
+			String command = buildQoderCommand(userQuery);
+			
+			// 累积输出用于构建完整消息
+			StringBuilder contentBuilder = new StringBuilder();
+			
+			// 创建 ProcessTask，每行输出发送一个流式响应
+			ProcessTask task = new ProcessTask(
+				command,
+				workspace,
+				line -> {
+					// 累积内容
+					if (contentBuilder.length() > 0) {
+						contentBuilder.append("\n");
+					}
+					contentBuilder.append(line);
+					
+					// 发送流式chunk（只包含新增的行）
+					AssistantMessage chunkMessage = new AssistantMessage(line + "\n");
+					Generation generation = new Generation(chunkMessage);
+					ChatResponse response = new ChatResponse(List.of(generation));
+					
+					sink.next(response);
+				},
+				timeoutSeconds,
+				activeProcesses
+			);
+			
+			try {
+				// 直接调用 call() 方法执行任务
+				int exitCode = task.call();
+				
+				// 如果没有任何输出，发送一个默认消息
+				if (contentBuilder.length() == 0) {
+					String message = "命令执行完成，退出码: " + exitCode;
+					AssistantMessage finalMessage = new AssistantMessage(message);
+					Generation generation = new Generation(finalMessage);
+					ChatResponse response = new ChatResponse(List.of(generation));
+					sink.next(response);
+				}
+				
+				// 完成流
+				sink.complete();
+				
+			} catch (Exception e) {
+				// 处理所有异常
+				sink.error(new RuntimeException("流式执行出错: " + e.getMessage(), e));
+			}
+		});
+	}
+
 	/**
 	 * 从 Prompt 中提取用户查询问题
 	 */
